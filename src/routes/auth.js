@@ -6,50 +6,24 @@ const User = require("../models/user");
 
 const router = express.Router();
 
-const COOKIE_NAME = "auth_token";
-
 function signToken(payload, expiresIn = process.env.JWT_EXPIRES_IN || "7d") {
   return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn });
 }
 
-function setAuthCookie(res, token) {
-  const isProd = process.env.NODE_ENV === "production";
-  // Allow cross-origin cookie for dev localhost; sameSite 'lax' usually works
-  res.cookie(COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: isProd,
-    sameSite: "none",
-    domain: process.env.FRONTEND_ORIGIN,
-    path: "/",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
-}
+function getTokenFromHeader(req) {
+  const authHeader = req.headers["authorization"];
+  if (!authHeader) return null;
 
-function clearAuthCookie(res) {
-  const isProd = process.env.NODE_ENV === "production";
-  res.clearCookie(COOKIE_NAME, {
-    httpOnly: true,
-    secure: isProd,
-    sameSite: "lax",
-    path: "/",
-  });
-}
+  // Expected format: "Bearer <token>"
+  const parts = authHeader.split(" ");
+  if (parts.length !== 2 || parts[0] !== "Bearer") return null;
 
-function getCookieToken(req) {
-  const header = req.headers["cookie"];
-  if (!header) return null;
-  const parts = header.split(";").map((p) => p.trim());
-  for (const p of parts) {
-    if (p.startsWith(`${COOKIE_NAME}=`)) {
-      return decodeURIComponent(p.slice(COOKIE_NAME.length + 1));
-    }
-  }
-  return null;
+  return parts[1];
 }
 
 function authMiddleware(req, res, next) {
   try {
-    const token = getCookieToken(req);
+    const token = getTokenFromHeader(req);
     if (!token) return res.status(401).json({ message: "Unauthorized" });
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = { id: decoded.sub, email: decoded.email };
@@ -75,7 +49,6 @@ router.post("/register", async (req, res) => {
     const user = await User.create({ name, email: email.toLowerCase(), password: hash });
 
     const token = signToken({ sub: user._id.toString(), email: user.email });
-    setAuthCookie(res, token);
 
     return res.status(201).json({ id: user._id, name: user.name, email: user.email, token });
   } catch (err) {
@@ -98,7 +71,6 @@ router.post("/login", async (req, res) => {
     if (!ok) return res.status(401).json({ message: "Invalid credentials" });
 
     const token = signToken({ sub: user._id.toString(), email: user.email });
-    setAuthCookie(res, token);
 
     return res.json({ id: user._id, name: user.name, email: user.email, token });
   } catch (err) {
@@ -109,7 +81,7 @@ router.post("/login", async (req, res) => {
 
 // Logout
 router.post("/logout", (req, res) => {
-  clearAuthCookie(res);
+  // Token removal is handled client-side
   return res.status(204).send();
 });
 
