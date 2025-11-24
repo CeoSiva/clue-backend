@@ -11,18 +11,24 @@ const app = express();
 
 // CORS config
 const corsOptions = {
-  origin:  process.env.FRONTEND_ORIGIN,
+  origin: process.env.FRONTEND_ORIGIN,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "X-Requested-With",
+    "Accept",
+    "Origin"
+  ],
   credentials: true,
 };
 app.use(cors(corsOptions)); // cors middleware
 
-app.use((req,res,next) => {
+app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", process.env.FRONTEND_ORIGIN);
   res.header("Access-Control-Allow-Credentials", true);
   res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept, Origin");
   next();
 })
 
