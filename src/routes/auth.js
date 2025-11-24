@@ -18,7 +18,8 @@ function setAuthCookie(res, token) {
   res.cookie(COOKIE_NAME, token, {
     httpOnly: true,
     secure: isProd,
-    sameSite: "lax",
+    sameSite: "none",
+    domain: process.env.FRONTEND_ORIGIN,
     path: "/",
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
